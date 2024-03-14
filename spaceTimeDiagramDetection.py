@@ -24,7 +24,7 @@ Usage:
     
     
 spaceTimeAnalysis [-h] [-o OUTPUT] [-c CONFIG] [-a APPROX] [-e EPSILON] [-n N] [-N NOISE] [-t THRESHOLD]
-                         [-r RANGE RANGE] [-w WIDTH] [-s SLOPE] [-v]
+                         [-r RANGE RANGE] [-w WIDTH] [-s SLOPE] [-R RANGE] [-v]
                          input
 
 positional arguments:
@@ -32,44 +32,19 @@ positional arguments:
 
 options:
     
-  -h, --help            show this help message and exit
-  
-  -o OUTPUT, --output OUTPUT
-                        Path to the output file.
-                                   
-  -c CONFIG, --config CONFIG
-                        Configuration file
-                                        
-  -a APPROX, --approx APPROX
-                        Approximate slope of the ridges. Default value == 1
-                                       
-  -e EPSILON, --epsilon EPSILON
-                        Epsilon paramater of the noneuclidean metric. Default value == 0.1
-                                       
-  -n N                  Characteristic length of the rising and falling edge. Default value == 5
-  
-  
-  -N NOISE, --noise NOISE
-                        Threshold value for denoising. Default value == 400
-                        
-                        
-  -t THRESHOLD, --threshold THRESHOLD
-                        Threshold value used to turn the greyscale image into a binary one. Default value == 128
-                        
-                        
-  -r RANGE RANGE, --range RANGE RANGE
-                        Lower and upper (in that order) bounds for the acceptable slopes. Default value == [-inf,inf]
-                        
-                        
-  -w WIDTH, --width WIDTH
-                        Characteristic width of a ridge. Default value == 100
-                        
-                        
-  -s SLOPE, --slope SLOPE
-                        Slope correction coefficient. Default value == 1
-                        
-                        
-  -v, --verbose         Display more information
+    -h, --help            show this help message and exit
+    -o OUTPUT, --output OUTPUT             path to the output file.
+    -c CONFIG, --config CONFIG             configuration file
+    -a APPROX, --approx APPROX             approximate slope of the ridges. Default value = 1
+    -e EPSILON, --epsilon EPSILON             epsilon paramater of the noneuclidean metric. Default value = 0.1
+    -n N                  characteristic length of the rising and falling edge. Default value = 5
+    -N NOISE, --noise NOISE             threshold value for denoising. Default value = 400
+    -t THRESHOLD, --threshold THRESHOLD             threshold value used to turn the greyscale image into a binary one. Default value = 128
+    -r RANGE RANGE, --range RANGE RANGE             lower and upper (in that order) bounds for the acceptable slopes. Default value = [-inf,inf]               
+    -w WIDTH, --width WIDTH             characteristic width of a ridge. Default value = 100
+    -s SLOPE, --slope SLOPE             slope correction coefficient. Default value = 1                    
+    -R RADIUS, -- RADIUS             radius for the adjacency detection. Default value = 100
+    -v, --verbose            display more information
 
 """
 
@@ -136,20 +111,20 @@ class spaceTimeDiagram:
         return N            
     
     
-    def update_color(self,i,N,c):
+    def combine_adjacent(self,i,N,j):
         r"""
-        Colorizes iteratively the edges according the colormap c.
+        Recursively combine all the adjacent (according to the neigbhorhood N) edges to the j-th edge of `d`.
         
         Parameters:
         
-        - i (integer): index of the edge to color.
-        - N (linked list integer): for each index i, N[i] is the next ridge index.
-        - c (colormap): the list of RGB colors to iterate through.
+        - i (integer): index of the current edge.
+        - N (linked list integer): for each index k, N[k] is the neighboring ridge index.
+        - j (integer): index of the initial edge.
             
         """
-        self.d[i][2] = c
-        if i in N.keys():
-            self.update_color(N[i],N,c)
+        self.d[i][2] = j
+        if i in N:
+            self.combine_adjacent(N[i],N,j)
             
     def detect_edges(self,thr_pre, thr_nb, n):
         r"""
