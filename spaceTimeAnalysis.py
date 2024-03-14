@@ -75,17 +75,18 @@ class DefaultAction(argparse.Action): #Detection of nondefault value
 
 parser = argparse.ArgumentParser("spaceTimeAnalysis", description="See the .pdf file for more in depth explanation")
 parser.add_argument("input", nargs=1, help="Path to the file to analyse.", type=pathlib.Path)
-parser.add_argument("-o", "--output", nargs=1, help="Path to the output file.", type=pathlib.Path, default=pathlib.Path('./out.jpg'))
-parser.add_argument("-c", "--config", nargs=1, help="Configuration file", type=pathlib.Path)
-parser.add_argument("-a", "--approx", help="Approximate slope of the ridges. Default value == 1", type=float, default=1, action=DefaultAction)
-parser.add_argument("-e", "--epsilon", help="Epsilon paramater of the noneuclidean metric. Default value == 0.1", type=float, default=0.1, action=DefaultAction)
-parser.add_argument("-n", help="Characteristic length of the rising and falling edge. Default value == 5", type=int, default=5, action=DefaultAction)
-parser.add_argument("-N", "--noise", help="Threshold value for denoising. Default value == 400", type=int, default=400, action=DefaultAction)
-parser.add_argument("-t", "--threshold", help="Threshold value used to turn the greyscale image into a binary one. Default value == 128", type=int, default=128, action=DefaultAction)
-parser.add_argument("-r", "--range", nargs=2, help="Lower and upper (in that order) bounds for the acceptable slopes. Default value == [-inf,inf]", type=float, action=DefaultAction)
-parser.add_argument("-w", "--width", help="Characteristic width of a ridge. Default value == 100", type=int, default=100, action=DefaultAction)
-parser.add_argument("-s", "--slope", help="Slope correction coefficient. Default value == 1", type=float, default=1, action=DefaultAction)
-parser.add_argument("-v", "--verbose", action='store_true', help="Display more information")
+parser.add_argument("-o", "--output", nargs=1, help="path to the output file.", type=pathlib.Path, default=pathlib.Path('./out.jpg'))
+parser.add_argument("-c", "--config", nargs=1, help="configuration file", type=pathlib.Path)
+parser.add_argument("-a", "--approx", help="approximate slope of the ridges. Default value = 1", type=float, default=1, action=DefaultAction)
+parser.add_argument("-e", "--epsilon", help="epsilon paramater of the noneuclidean metric. Default value = 0.1", type=float, default=0.1, action=DefaultAction)
+parser.add_argument("-n", help="characteristic length of the rising and falling edge. Default value = 5", type=int, default=5, action=DefaultAction)
+parser.add_argument("-N", "--noise", help="threshold value for denoising. Default value = 400", type=int, default=400, action=DefaultAction)
+parser.add_argument("-t", "--threshold", help="threshold value used to turn the greyscale image into a binary one. Default value = 128", type=int, default=128, action=DefaultAction)
+parser.add_argument("-r", "--range", nargs=2, help="lower and upper (in that order) bounds for the acceptable slopes. Default value = [-inf,inf]", type=float, action=DefaultAction)
+parser.add_argument("-w", "--width", help="characteristic width of a ridge. Default value = 100", type=int, default=100, action=DefaultAction)
+parser.add_argument("-s", "--slope", help="slope correction coefficient. Default value = 1", type=float, default=1, action=DefaultAction)
+parser.add_argument("-R", "--radius", help="radius for the adjacency detection. Default value = 100", type=int, default=100, action=DefaultAction)
+parser.add_argument("-v", "--verbose", action='store_true', help="display more information")
 args = parser.parse_args()
 
 
@@ -109,16 +110,17 @@ if args.config is not None:
     
     #Sets the config filevalues
     approx = float(params['approx'])
-    epislon = float(params['epsilon'])
+    epsilon = float(params['epsilon'])
     n = int(params['n'])
     thr_nb = int(params['noise'])
     thr_pre = int(params['threshold'])
     bounds = [float(params['r'].split(' ')[0]), float(params['r'].split(' ')[1])]
     slope = float(params['slope'])
+    rad = int(params['radius'])
     l = int(params['width'])
 else:                
     approx = float(args.approx)
-    epislon = float(args.epsilon)
+    epsilon = float(args.epsilon)
     n = int(args.n)
     thr_nb = int(args.noise)
     thr_pre = int(args.threshold)
@@ -127,6 +129,7 @@ else:
     else:
         bounds = [args.range[0],args.range[1]]
     slope = float(args.slope)
+    rad = int(args.radius)
     l = int(args.width)
     
 theta = arctan(approx)
@@ -145,11 +148,24 @@ std = stdd.spaceTimeDiagram(pixels,args.verbose)
 #Detects the rising and falling edges of the ridges
 std.detect_edges(thr_pre,thr_nb,n)
 
+#Determine the adjacency graph (i.e. which edges are adjacent to each other) and Combine adjacent ridges
+N = std.compute_neighbors(rad,theta,epsilon)
+if args.verbose == True:
+    print('Merging adjacent edges')
+    edges = tqdm(std.d)
+else:
+    edges = std.d
+
+for i in edges:
+    std.combine_adjacent(i,N,std.d[i][2])
+
+#Clean up the noise and compute the slopes
 if args.verbose == True:
     print('Builiding and cleaning data')
 
 std.clean_and_compute(bounds)
-     
+
+#Merge the rising and falling edges of each ridge.  
 if args.verbose == True:        
     print('Merging uper and lower bounds')    
 
@@ -166,9 +182,9 @@ k = 0
 
 if args.verbose == True:
     print('Linear regression and display')
-    ridges = tqdm(std.d.keys())
+    ridges = tqdm(std.d)
 else:
-    ridges = std.d.keys()
+    ridges = std.d
 
 data = std.d     
 for i in ridges:
